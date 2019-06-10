@@ -30,7 +30,7 @@ def _timestamp_parse(ts_in: ConvertableTimestamp) -> datetime:
     if not ts.tzinfo:
         # Needed? All timestamps should be iso8601 so ought to always contain timezone.
         # Yes, because it is optional in iso8601
-        logger.warning("timestamp without timezone found, using UTC: {}".format(ts))
+        #logger.warning("timestamp without timezone found, using UTC: {}".format(ts))
         ts = ts.replace(tzinfo=timezone.utc)
     return ts
 
