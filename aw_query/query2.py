@@ -1,12 +1,12 @@
 import logging
-from typing import Union, List, Dict, Sequence, Callable, Type, Any
+from typing import Union, List, Dict, Sequence, Callable, Type, Any, Tuple
 from datetime import datetime
 
 from aw_core.models import Event
 from aw_datastore import Datastore
 
-from .query2_error import QueryException, QueryParseException, QueryInterpretException
-from .query2_functions import query2_functions
+from .exceptions import QueryException, QueryParseException, QueryInterpretException
+from .functions import functions
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class QToken:
         raise NotImplementedError
 
     @staticmethod
-    def check(string: str):
+    def check(string: str) -> Tuple[str, str]:
         raise NotImplementedError
 
 
@@ -116,14 +116,14 @@ class QFunction(QToken):
         self.args = args
 
     def interpret(self, datastore: Datastore, namespace: dict):
-        if self.name not in query2_functions:
+        if self.name not in functions:
             raise QueryInterpretException("Tried to call function '{}' which doesn't exist".format(self.name))
         call_args = [datastore, namespace]
         for arg in self.args:
             call_args.append(arg.interpret(datastore, namespace))
         # logger.debug("Arguments for functioncall to {} is {}".format(self.name, call_args))
         try:
-            result = query2_functions[self.name](*call_args)  # type: ignore
+            result = functions[self.name](*call_args)  # type: ignore
         except TypeError:
             raise QueryInterpretException("Tried to call function {} with invalid amount of arguments".format(self.name))
         return result
@@ -207,7 +207,7 @@ class QDict(QToken):
     @staticmethod
     def parse(string: str, namespace: dict) -> QToken:
         entries_str = string[1:-1]
-        d = {} # type: Dict[str, QToken]
+        d: Dict[str, QToken] = {}
         while len(entries_str) > 0:
             entries_str = entries_str.strip()
             if len(d) > 0 and entries_str[0] == ",":
@@ -272,7 +272,7 @@ class QList(QToken):
     @staticmethod
     def parse(string: str, namespace: dict) -> QToken:
         entries_str = string[1:-1]
-        l = [] # type: List[QToken]
+        l: List[QToken] = []
         while len(entries_str) > 0:
             entries_str = entries_str.strip()
             if len(l) > 0 and entries_str[0] == ",":
@@ -314,8 +314,10 @@ class QList(QToken):
         return string[:i], string[i + 1:]
 
 
-qtypes = [QString, QInteger, QFunction, QDict, QList, QVariable]  # type: Sequence[Type[QToken]]
-def _parse_token(string: str, namespace: dict): # TODO: Add return type
+qtypes: Sequence[Type[QToken]] = [QString, QInteger, QFunction, QDict, QList, QVariable]
+
+
+def _parse_token(string: str, namespace: dict) -> Tuple[Tuple[Any, str], str]:
     # TODO: The whole parsing thing is shoddily written, needs a rewrite from ground-up
     if not isinstance(string, str):
         raise QueryParseException("Reached unreachable, cannot parse something that isn't a string")
